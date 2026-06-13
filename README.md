@@ -2,27 +2,15 @@
 
 Configurable bridge between Amazon Alexa custom skills and an OpenClaw assistant.
 
-The first deployment target is Brian's private Jay/OpenClaw runtime, but the code should stay assistant-agnostic:
-
 - inbound: Alexa custom skill captures a free-form message and forwards a normalized event to a configured OpenClaw adapter;
 - outbound: OpenClaw can call an internal bridge endpoint to announce short messages through allowlisted Home Assistant Alexa Devices targets;
 - security: only the Alexa-facing route may be exposed publicly, and Home Assistant/OpenClaw remain private.
 
 ## Status
 
-Working private deployment for Brian's Jay/OpenClaw runtime, with the bridge
-kept configurable for other OpenClaw assistants.
-
-Implementation evidence is tracked in:
-
-`/Users/briansnyder/Documents/Axicom/Codex/.codex-runs/openclaw-to-alexa-bridge-implementation-20260613-023036Z/`
-
-Verified local runtime:
-
-- service listens on `127.0.0.1`;
-- only `/alexa` is intended for public Alexa traffic;
-- `/internal/announce` requires a bearer token and only reaches allowlisted Home Assistant targets;
-- Alexa inbound messages are durably queued first, then drained to OpenClaw in the background.
+Early implementation. The service is intended to be assistant-agnostic: configure
+your assistant id, OpenClaw delivery method, Alexa skill id, and Home Assistant
+announcement targets through environment variables.
 
 ## Quick Start
 
@@ -66,47 +54,36 @@ metadata. On restart, pending records are reloaded and drained.
 
 ## Alexa Skill
 
-The verified development invocation name is:
+Use a two-word invocation name that does not overlap with Alexa contacts,
+messaging, reminders, or built-in commands. For development, this repo uses:
 
 ```text
 claw bridge
 ```
 
-Example tested utterance:
+Example utterance:
 
 ```text
-ask claw bridge to tell jay bridge drain verification only please acknowledge receipt and do not create a reminder
+ask claw bridge to capture remember to check the garage door
 ```
 
-The exact phrase `Alexa, tell Jay ...` is not proven in v1 because `jay` is
-currently intercepted by Alexa built-in Contacts/Reminders behavior before the
-custom skill receives the utterance. A later product step can explore a routine,
-different invocation name, or certification/naming approach.
-
-An attempted `jay` invocation was rejected by the Developer Console because the
-invocation name must be at least two words. An attempted `jay assistant`
-invocation built successfully, but cold-launch `tell Jay Assistant ...` and
-`ask Jay Assistant ...` phrasing still routed to Alexa messaging instead of the
-skill. `open Jay Assistant` reached the skill, but that does not satisfy the
-free-form message requirement.
+Single-word personal names and contact-like phrases are often intercepted by
+Alexa before a custom skill receives them. If you want a person-like name, test
+the invocation thoroughly in the Alexa Developer Console before relying on it.
 
 ## Home Assistant Announcements
 
-The first deployment uses Home Assistant's Alexa Devices notify entities through
-a bridge-specific local-only webhook automation. This avoids storing a broad Home
-Assistant long-lived token in the bridge runtime.
+The bridge can call Home Assistant either with a long-lived token or with a
+bridge-specific webhook automation. A local-only webhook can be a good fit when
+the bridge runs on the same host or private network as Home Assistant and you
+want to avoid storing a broad Home Assistant token.
 
-Verified target aliases:
+Example target aliases:
 
 ```text
-bedroom=notify.bedroom_announce
-master_bedroom=notify.master_bedroom_announce
-kitchen=notify.kitchen_announce
-bathroom=notify.bathroom_announce
-inside=notify.inside_announce
-outside=notify.outside_announce
+office=notify.office_announce
+living_room=notify.living_room_announce
 everywhere=notify.everywhere_announce
-echo_auto=notify.brian_s_echo_auto_announce
 ```
 
 Announcement controls:
@@ -120,13 +97,7 @@ Announcement controls:
 
 ## Deployment Notes
 
-Current private runtime path:
-
-```text
-/Volumes/LaCie_6big/briansnyder/repos/openclaw-to-alexa-bridge
-```
-
-The live runtime env is `.env.runtime` with mode `0600`. Do not commit it.
+Keep runtime secrets in `.env.runtime` with mode `0600`. Do not commit it.
 
 Restart shape used during verification:
 
@@ -139,11 +110,9 @@ curl -fsS "http://127.0.0.1:${PORT}/healthz"
 ```
 
 Tailscale Funnel is intentionally constrained to the Alexa route. At the time
-of this implementation, `https://snizserver.barred-komodo.ts.net:8443/alexa`
-is the verified Alexa endpoint. The host also had pre-existing unrelated Funnel
-state, including `/ClawTV`, and an earlier bridge-only `:10000/alexa` attempt.
-Do not run broad Funnel resets from this repo; remove only known bridge routes
-after reviewing `tailscale funnel status --json`.
+of deployment, expose only the public path your Alexa skill needs, such as
+`https://<your-tailnet-host>:8443/alexa`. Do not expose Home Assistant,
+OpenClaw, logs, queue files, or `/internal/announce` through Funnel.
 
 ## Rollback
 
@@ -155,9 +124,8 @@ if [ -f run/bridge.pid ]; then kill "$(cat run/bridge.pid)"; fi
 
 Home Assistant webhook automation:
 
-1. Restore the saved `automations.yaml` backup.
-2. Run `docker exec homeassistant hass --script check_config -c /config`.
-3. Restart Home Assistant.
+1. Remove or disable the bridge-specific webhook automation.
+2. Validate and restart Home Assistant using your normal deployment process.
 
 Alexa endpoint:
 
@@ -175,7 +143,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-Production acceptance must use real Alexa, real OpenClaw, and real Home
+Production acceptance should use real Alexa, real OpenClaw, and real Home
 Assistant/Echo evidence. Test doubles are limited to tests.
 
 ## Non-goals
