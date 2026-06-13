@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import Alexa from 'ask-sdk-core';
-import type { HandlerInput, RequestHandler } from 'ask-sdk-core';
+import type { ErrorHandler, HandlerInput, RequestHandler } from 'ask-sdk-core';
 import type { BridgeConfig, DeliveryResult, NormalizedAlexaEvent } from './types.js';
 
 export interface AlexaDependencies {
@@ -104,7 +104,18 @@ export function createSkill(config: BridgeConfig, deps: AlexaDependencies) {
     }
   };
 
+  const errorHandler: ErrorHandler = {
+    canHandle() {
+      return true;
+    },
+    handle(handlerInput: HandlerInput, error: Error) {
+      console.error(`alexa skill error: ${error.message}`);
+      return handlerInput.responseBuilder.speak('I could not send that message.').getResponse();
+    }
+  };
+
   return Alexa.SkillBuilders.custom()
     .addRequestHandlers(launchHandler, captureHandler, helpHandler, stopHandler)
+    .addErrorHandlers(errorHandler)
     .create();
 }
