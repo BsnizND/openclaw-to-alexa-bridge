@@ -83,6 +83,13 @@ currently intercepted by Alexa built-in Contacts/Reminders behavior before the
 custom skill receives the utterance. A later product step can explore a routine,
 different invocation name, or certification/naming approach.
 
+An attempted `jay` invocation was rejected by the Developer Console because the
+invocation name must be at least two words. An attempted `jay assistant`
+invocation built successfully, but cold-launch `tell Jay Assistant ...` and
+`ask Jay Assistant ...` phrasing still routed to Alexa messaging instead of the
+skill. `open Jay Assistant` reached the skill, but that does not satisfy the
+free-form message requirement.
+
 ## Home Assistant Announcements
 
 The first deployment uses Home Assistant's Alexa Devices notify entities through

@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "jay",
+      "invocationName": "claw bridge",
       "intents": [
         {
           "name": "CaptureMessageIntent",
@@ -30,4 +30,3 @@
     }
   }
 }
-
