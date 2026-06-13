@@ -34,6 +34,15 @@ export function createApp(config: BridgeConfig, deps: AppDependencies = {}) {
     next();
   });
 
+  app.use((req, res, next) => {
+    if (req.path === '/alexa') {
+      res.on('finish', () => {
+        logger.info({ method: req.method, path: req.path, statusCode: res.statusCode }, 'alexa request completed');
+      });
+    }
+    next();
+  });
+
   app.get('/healthz', (_req, res) => {
     res.json({ ok: true });
   });
@@ -41,6 +50,14 @@ export function createApp(config: BridgeConfig, deps: AppDependencies = {}) {
   const skill = createSkill(config, { deliverEvent });
   const adapter = new ExpressAdapter(skill, !config.allowUnsignedAlexaRequests, !config.allowUnsignedAlexaRequests);
   app.post('/alexa', adapter.getRequestHandlers());
+  app.use('/alexa', (error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    void next;
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error({ error: message }, 'alexa request failed');
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, error: 'alexa request failed' });
+    }
+  });
 
   app.post('/internal/announce', express.json({ limit: '16kb' }), async (req, res) => {
     const auth = req.header('authorization') || '';

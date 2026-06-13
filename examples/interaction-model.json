@@ -12,7 +12,6 @@
             }
           ],
           "samples": [
-            "{message}",
             "to {message}",
             "send {message}",
             "send to {message}",
