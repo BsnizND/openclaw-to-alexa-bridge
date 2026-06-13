@@ -4,7 +4,7 @@ import { drainQueue, queueEvent } from './queue.js';
 
 function buildAssistantMessage(event: NormalizedAlexaEvent): string {
   return [
-    `Voice message from Alexa for ${event.assistant}:`,
+    `Voice message from Alexa skill for ${event.assistant}:`,
     '',
     event.raw_text,
     '',
@@ -16,15 +16,25 @@ function buildAssistantMessage(event: NormalizedAlexaEvent): string {
     .join('\n');
 }
 
-async function deliverViaCli(config: BridgeConfig, event: NormalizedAlexaEvent, timeoutMs: number): Promise<DeliveryResult> {
+function buildCompactMessage(config: BridgeConfig, event: NormalizedAlexaEvent): string {
+  const prefix = config.alexaMessagePrefix?.trim();
+  return prefix ? `${prefix} ${event.raw_text}` : event.raw_text;
+}
+
+function buildOpenClawMessage(config: BridgeConfig, event: NormalizedAlexaEvent): string {
+  return config.openclawMessageStyle === 'compact' ? buildCompactMessage(config, event) : buildAssistantMessage(event);
+}
+
+async function deliverViaCli(config: BridgeConfig, event: NormalizedAlexaEvent): Promise<DeliveryResult> {
+  const timeoutMs = config.openclawCliDrainTimeoutMs;
   const args = [
     'agent',
     '--agent',
-    config.assistantId,
+    event.assistant || config.assistantId,
     '--session-key',
     config.openclawSessionKey,
     '--message',
-    buildAssistantMessage(event),
+    buildOpenClawMessage(config, event),
     '--json',
     '--timeout',
     String(Math.ceil(timeoutMs / 1000))
@@ -32,9 +42,21 @@ async function deliverViaCli(config: BridgeConfig, event: NormalizedAlexaEvent, 
   if (config.openclawCliThinking) {
     args.push('--thinking', config.openclawCliThinking);
   }
+  if (config.openclawDeliverReply) {
+    args.push('--deliver');
+    if (config.openclawReplyChannel) {
+      args.push('--reply-channel', config.openclawReplyChannel);
+    }
+    if (config.openclawReplyTo) {
+      args.push('--reply-to', config.openclawReplyTo);
+    }
+  }
 
   return new Promise((resolve, reject) => {
-    const child = spawn(config.openclawCliBin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(config.openclawCliBin, args, {
+      cwd: config.openclawWorkdir,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
     let stdout = '';
     let stderr = '';
     let settled = false;
@@ -88,13 +110,13 @@ async function deliverViaHttp(config: BridgeConfig, event: NormalizedAlexaEvent)
 
 export async function deliverToOpenClaw(config: BridgeConfig, event: NormalizedAlexaEvent): Promise<DeliveryResult> {
   await queueEvent(config.queuePath, event, new Error('queued for asynchronous OpenClaw delivery'));
-  return { ok: true, queued: true };
+  return event.request_id ? { ok: true, queued: true, id: event.request_id } : { ok: true, queued: true };
 }
 
 export async function deliverQueuedEventToOpenClaw(config: BridgeConfig, event: NormalizedAlexaEvent): Promise<DeliveryResult> {
   return config.openclawAdapter === 'http'
     ? await deliverViaHttp(config, event)
-    : await deliverViaCli(config, event, config.openclawCliDrainTimeoutMs);
+    : await deliverViaCli(config, event);
 }
 
 export async function drainOpenClawQueue(config: BridgeConfig) {

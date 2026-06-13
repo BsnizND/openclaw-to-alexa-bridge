@@ -15,6 +15,7 @@ function hashId(value: string | undefined, salt: string): string | undefined {
 export function buildNormalizedEvent(envelope: any, rawText: string, config: BridgeConfig): NormalizedAlexaEvent {
   return {
     source: 'alexa_skill',
+    adapter: 'alexa',
     assistant: config.assistantId,
     raw_text: rawText,
     captured_at: new Date().toISOString(),
@@ -34,7 +35,7 @@ export function createSkill(config: BridgeConfig, deps: AlexaDependencies) {
     },
     handle(handlerInput: HandlerInput) {
       return handlerInput.responseBuilder
-        .speak(`What should I tell ${config.assistantId}?`)
+        .speak('What should I pass along?')
         .reprompt(`You can say something like, remind me to get dog food.`)
         .getResponse();
     }
@@ -52,8 +53,8 @@ export function createSkill(config: BridgeConfig, deps: AlexaDependencies) {
       const rawText = envelope.request?.intent?.slots?.message?.value?.trim();
       if (!rawText) {
         return handlerInput.responseBuilder
-          .speak(`What should I tell ${config.assistantId}?`)
-          .reprompt(`Tell me the message for ${config.assistantId}.`)
+          .speak('What should I pass along?')
+          .reprompt('Tell me the message you want to send.')
           .getResponse();
       }
 
@@ -67,13 +68,13 @@ export function createSkill(config: BridgeConfig, deps: AlexaDependencies) {
       const result = await deps.deliverEvent(event);
       if (result.ok && result.queued) {
         return handlerInput.responseBuilder
-          .speak(`I captured that. ${config.assistantId} is offline, so I queued it.`)
+          .speak('Got it. I sent that along.')
           .getResponse();
       }
       if (result.ok) {
-        return handlerInput.responseBuilder.speak(`Got it. I told ${config.assistantId}.`).getResponse();
+        return handlerInput.responseBuilder.speak('Got it. I sent that along.').getResponse();
       }
-      return handlerInput.responseBuilder.speak(`I could not reach ${config.assistantId}.`).getResponse();
+      return handlerInput.responseBuilder.speak('I could not send that message.').getResponse();
     }
   };
 
@@ -86,7 +87,7 @@ export function createSkill(config: BridgeConfig, deps: AlexaDependencies) {
     },
     handle(handlerInput: HandlerInput) {
       return handlerInput.responseBuilder
-        .speak(`You can say, tell ${config.assistantId} remind me to get dog food.`)
+        .speak('You can ask this bridge to pass along a message.')
         .getResponse();
     }
   };
@@ -107,4 +108,3 @@ export function createSkill(config: BridgeConfig, deps: AlexaDependencies) {
     .addRequestHandlers(launchHandler, captureHandler, helpHandler, stopHandler)
     .create();
 }
-

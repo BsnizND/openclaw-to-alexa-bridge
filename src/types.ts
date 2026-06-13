@@ -1,3 +1,6 @@
+export type OpenClawAdapter = 'cli' | 'http';
+export type OpenClawMessageStyle = 'detailed' | 'compact';
+
 export interface BridgeConfig {
   port: number;
   host: string;
@@ -7,12 +10,18 @@ export interface BridgeConfig {
   alexaUserHashSalt: string;
   allowUnsignedAlexaRequests: boolean;
   assistantId: string;
-  openclawAdapter: 'cli' | 'http';
+  openclawAdapter: OpenClawAdapter;
   openclawCliBin: string;
   openclawCliTimeoutMs: number;
   openclawCliDrainTimeoutMs: number;
   openclawCliThinking?: string;
+  openclawDeliverReply: boolean;
+  openclawReplyChannel?: string;
+  openclawReplyTo?: string;
+  openclawWorkdir?: string;
   openclawSessionKey: string;
+  openclawMessageStyle: OpenClawMessageStyle;
+  alexaMessagePrefix?: string;
   openclawIngestUrl?: string;
   openclawIngestToken?: string;
   queuePath: string;
@@ -30,6 +39,7 @@ export interface BridgeConfig {
 
 export interface NormalizedAlexaEvent {
   source: 'alexa_skill';
+  adapter: 'alexa';
   assistant: string;
   raw_text: string;
   captured_at: string;

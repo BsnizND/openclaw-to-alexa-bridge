@@ -9,13 +9,19 @@ const envSchema = z.object({
   ALEXA_SKILL_ID: z.string().min(1),
   ALEXA_USER_HASH_SALT: z.string().min(16),
   ALLOW_UNSIGNED_ALEXA_REQUESTS: z.string().optional(),
-  OPENCLAW_ASSISTANT_ID: z.string().min(1).default('jay'),
+  OPENCLAW_ASSISTANT_ID: z.string().min(1).default('assistant'),
   OPENCLAW_ADAPTER: z.enum(['cli', 'http']).default('cli'),
   OPENCLAW_CLI_BIN: z.string().min(1).default('openclaw'),
   OPENCLAW_CLI_TIMEOUT_MS: z.coerce.number().int().positive().default(2500),
   OPENCLAW_CLI_DRAIN_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
   OPENCLAW_CLI_THINKING: z.string().optional(),
-  OPENCLAW_SESSION_KEY: z.string().min(1).default('agent:jay:main'),
+  OPENCLAW_DELIVER_REPLY: z.coerce.boolean().default(false),
+  OPENCLAW_REPLY_CHANNEL: z.string().min(1).optional(),
+  OPENCLAW_REPLY_TO: z.string().min(1).optional(),
+  OPENCLAW_WORKDIR: z.string().min(1).optional(),
+  OPENCLAW_SESSION_KEY: z.string().min(1).default('agent:assistant:main'),
+  OPENCLAW_MESSAGE_STYLE: z.enum(['detailed', 'compact']).default('detailed'),
+  ALEXA_MESSAGE_PREFIX: z.string().min(1).optional(),
   OPENCLAW_INGEST_URL: z.string().url().optional(),
   OPENCLAW_INGEST_TOKEN: z.string().optional(),
   QUEUE_PATH: z.string().min(1).default('./data/queue.jsonl'),
@@ -59,6 +65,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
   if (raw.OPENCLAW_ADAPTER === 'http' && (!raw.OPENCLAW_INGEST_URL || !raw.OPENCLAW_INGEST_TOKEN)) {
     throw new Error('OPENCLAW_INGEST_URL and OPENCLAW_INGEST_TOKEN are required for OPENCLAW_ADAPTER=http');
   }
+  if (raw.OPENCLAW_DELIVER_REPLY && (!raw.OPENCLAW_REPLY_CHANNEL || !raw.OPENCLAW_REPLY_TO)) {
+    throw new Error('OPENCLAW_REPLY_CHANNEL and OPENCLAW_REPLY_TO are required when OPENCLAW_DELIVER_REPLY=true');
+  }
 
   return {
     port: raw.PORT,
@@ -74,7 +83,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
     openclawCliTimeoutMs: raw.OPENCLAW_CLI_TIMEOUT_MS,
     openclawCliDrainTimeoutMs: raw.OPENCLAW_CLI_DRAIN_TIMEOUT_MS,
     openclawCliThinking: raw.OPENCLAW_CLI_THINKING,
+    openclawDeliverReply: raw.OPENCLAW_DELIVER_REPLY,
+    openclawReplyChannel: raw.OPENCLAW_REPLY_CHANNEL,
+    openclawReplyTo: raw.OPENCLAW_REPLY_TO,
+    openclawWorkdir: raw.OPENCLAW_WORKDIR,
     openclawSessionKey: raw.OPENCLAW_SESSION_KEY,
+    openclawMessageStyle: raw.OPENCLAW_MESSAGE_STYLE,
+    alexaMessagePrefix: raw.ALEXA_MESSAGE_PREFIX,
     openclawIngestUrl: raw.OPENCLAW_INGEST_URL,
     openclawIngestToken: raw.OPENCLAW_INGEST_TOKEN,
     queuePath: raw.QUEUE_PATH,

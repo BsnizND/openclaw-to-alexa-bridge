@@ -27,5 +27,34 @@ describe('config', () => {
     expect(targets.get('office')).toBe('notify.office_echo');
     expect(targets.get('notify.everywhere')).toBe('notify.everywhere');
   });
-});
 
+  it('loads OpenClaw voice-ingress delivery options', () => {
+    const config = loadConfig({
+      ...baseEnv,
+      OPENCLAW_ASSISTANT_ID: 'assistant',
+      OPENCLAW_DELIVER_REPLY: 'true',
+      OPENCLAW_REPLY_CHANNEL: 'telegram',
+      OPENCLAW_REPLY_TO: 'telegram:12345',
+      OPENCLAW_WORKDIR: '/tmp/openclaw',
+      OPENCLAW_MESSAGE_STYLE: 'compact',
+      ALEXA_MESSAGE_PREFIX: 'Sent via Alexa voice message:'
+    });
+
+    expect(config.assistantId).toBe('assistant');
+    expect(config.openclawDeliverReply).toBe(true);
+    expect(config.openclawReplyChannel).toBe('telegram');
+    expect(config.openclawReplyTo).toBe('telegram:12345');
+    expect(config.openclawWorkdir).toBe('/tmp/openclaw');
+    expect(config.openclawMessageStyle).toBe('compact');
+    expect(config.alexaMessagePrefix).toBe('Sent via Alexa voice message:');
+  });
+
+  it('requires reply routing when OpenClaw delivery is enabled', () => {
+    expect(() =>
+      loadConfig({
+        ...baseEnv,
+        OPENCLAW_DELIVER_REPLY: 'true'
+      })
+    ).toThrow(/OPENCLAW_REPLY_CHANNEL and OPENCLAW_REPLY_TO/);
+  });
+});

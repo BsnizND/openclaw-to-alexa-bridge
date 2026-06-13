@@ -27,6 +27,7 @@ describe('Alexa event normalization', () => {
     );
 
     expect(event.source).toBe('alexa_skill');
+    expect(event.adapter).toBe('alexa');
     expect(event.assistant).toBe('jay');
     expect(event.raw_text).toBe('remember the network tech comes Friday');
     expect(event.user_id_hash).toMatch(/^sha256:/);
@@ -34,4 +35,3 @@ describe('Alexa event normalization', () => {
     expect(event.device_id_hash).not.toContain('raw-device');
   });
 });
-

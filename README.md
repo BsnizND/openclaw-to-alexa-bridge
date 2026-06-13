@@ -2,7 +2,7 @@
 
 Configurable bridge between Amazon Alexa custom skills and an OpenClaw assistant.
 
-- inbound: Alexa custom skill captures a free-form message and forwards a normalized event to a configured OpenClaw adapter;
+- inbound: Alexa custom skill captures a free-form message, normalizes it as a voice-ingress event, and forwards it to a configured OpenClaw adapter;
 - outbound: OpenClaw can call an internal bridge endpoint to announce short messages through allowlisted Home Assistant Alexa Devices targets;
 - security: only the Alexa-facing route may be exposed publicly, and Home Assistant/OpenClaw remain private.
 
@@ -11,6 +11,10 @@ Configurable bridge between Amazon Alexa custom skills and an OpenClaw assistant
 Early implementation. The service is intended to be assistant-agnostic: configure
 your assistant id, OpenClaw delivery method, Alexa skill id, and Home Assistant
 announcement targets through environment variables.
+
+The project is deliberately shaped as an Alexa source adapter. Its inbound
+event contract and OpenClaw delivery options mirror the companion Siri bridge
+shape so both can later move behind one shared voice-ingress package.
 
 ## Quick Start
 
@@ -52,24 +56,47 @@ drain loop delivers pending records to OpenClaw using either:
 Queue records are marked `pending`, `delivered`, or `failed` with attempt
 metadata. On restart, pending records are reloaded and drained.
 
+For continuity with an existing assistant conversation, set
+`OPENCLAW_MESSAGE_STYLE=compact` and enable OpenClaw reply delivery:
+
+```text
+OPENCLAW_SESSION_KEY=agent:assistant:telegram:default:direct:user
+OPENCLAW_DELIVER_REPLY=true
+OPENCLAW_REPLY_CHANNEL=telegram
+OPENCLAW_REPLY_TO=telegram:1234567890
+ALEXA_MESSAGE_PREFIX=Sent via Alexa voice message:
+```
+
+This keeps Alexa as a capture source while OpenClaw owns reasoning, response
+routing, and channel delivery.
+
 ## Alexa Skill
 
 Use a two-word invocation name that does not overlap with Alexa contacts,
-messaging, reminders, or built-in commands. For development, this repo uses:
+messaging, reminders, or built-in commands. The example interaction model uses:
 
 ```text
-claw bridge
+jay bridge
 ```
 
 Example utterance:
 
 ```text
-ask claw bridge to capture remember to check the garage door
+Alexa, ask Jay Bridge to remember to check the garage door
 ```
 
-Single-word personal names and contact-like phrases are often intercepted by
-Alexa before a custom skill receives them. If you want a person-like name, test
-the invocation thoroughly in the Alexa Developer Console before relying on it.
+You can also open the skill first:
+
+```text
+Alexa, open Jay Bridge
+```
+
+Then speak the message when prompted.
+
+Native phrases such as `Alexa, tell Jay ...` are often intercepted by Alexa
+Communications or contacts before a custom skill receives them. Use
+`ask <invocation name> to <message>` for this bridge, and test the invocation in
+the Alexa Developer Console before relying on it.
 
 ## Home Assistant Announcements
 

@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "claw bridge",
+      "invocationName": "jay bridge",
       "intents": [
         {
           "name": "CaptureMessageIntent",
@@ -14,7 +14,11 @@
           "samples": [
             "{message}",
             "to {message}",
+            "send {message}",
+            "send to {message}",
+            "pass along {message}",
             "that {message}",
+            "tell {message}",
             "remember to {message}",
             "remind me to {message}",
             "note that {message}",

@@ -12,6 +12,7 @@ describe('OpenClaw delivery', () => {
     const queuePath = join(dir, 'queue.jsonl');
     const event: NormalizedAlexaEvent = {
       source: 'alexa_skill',
+      adapter: 'alexa',
       assistant: 'jay',
       raw_text: 'remember dog food',
       captured_at: new Date().toISOString()
@@ -50,6 +51,7 @@ describe('OpenClaw delivery', () => {
 
     const event: NormalizedAlexaEvent = {
       source: 'alexa_skill',
+      adapter: 'alexa',
       assistant: 'jay',
       raw_text: 'drain this message',
       captured_at: new Date().toISOString()
@@ -93,6 +95,7 @@ describe('OpenClaw delivery', () => {
 
     const event: NormalizedAlexaEvent = {
       source: 'alexa_skill',
+      adapter: 'alexa',
       assistant: 'jay',
       raw_text: 'this should fail visibly',
       captured_at: new Date().toISOString()
@@ -129,6 +132,7 @@ describe('OpenClaw delivery', () => {
 
     const event: NormalizedAlexaEvent = {
       source: 'alexa_skill',
+      adapter: 'alexa',
       assistant: 'jay',
       raw_text: 'this should not block alexa',
       captured_at: new Date().toISOString()
@@ -154,6 +158,55 @@ describe('OpenClaw delivery', () => {
     const queued = await readFile(queuePath, 'utf8');
     expect(queued).toContain('this should not block alexa');
     expect(queued).not.toContain('openclaw delivery exceeded 25ms');
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('can drain compact messages with OpenClaw reply delivery enabled', async () => {
+    const dir = join(tmpdir(), `openclaw-alexa-compact-drain-test-${Date.now()}`);
+    await mkdir(dir, { recursive: true });
+    const queuePath = join(dir, 'queue.jsonl');
+    const binPath = join(dir, 'fake-openclaw');
+    const argsPath = join(dir, 'args.txt');
+    await writeFile(binPath, `#!/bin/sh\nprintf '%s\\n' "$@" > '${argsPath}'\n`, 'utf8');
+    await chmod(binPath, 0o755);
+
+    const event: NormalizedAlexaEvent = {
+      source: 'alexa_skill',
+      adapter: 'alexa',
+      assistant: 'assistant',
+      raw_text: 'send this to the existing conversation',
+      captured_at: new Date().toISOString(),
+      request_id: 'request-compact-1'
+    };
+
+    const config = {
+      openclawAdapter: 'cli',
+      openclawCliBin: binPath,
+      openclawCliTimeoutMs: 25,
+      openclawCliDrainTimeoutMs: 1000,
+      openclawDeliverReply: true,
+      openclawReplyChannel: 'telegram',
+      openclawReplyTo: 'telegram:12345',
+      openclawMessageStyle: 'compact',
+      alexaMessagePrefix: 'Sent via Alexa voice message:',
+      assistantId: 'assistant',
+      openclawSessionKey: 'agent:assistant:telegram:default:direct:user',
+      queuePath,
+      queueMaxAttempts: 3
+    } as BridgeConfig;
+
+    const accepted = await deliverToOpenClaw(config, event);
+    const drain = await drainOpenClawQueue(config);
+
+    expect(accepted).toEqual({ ok: true, queued: true, id: 'request-compact-1' });
+    expect(drain).toEqual({ delivered: 1, failed: 0, pending: 0 });
+    const args = await readFile(argsPath, 'utf8');
+    expect(args).toContain('--agent\nassistant');
+    expect(args).toContain('--deliver');
+    expect(args).toContain('--reply-channel\ntelegram');
+    expect(args).toContain('--reply-to\ntelegram:12345');
+    expect(args).toContain('Sent via Alexa voice message: send this to the existing conversation');
+    expect(args).not.toContain('Voice message from Alexa skill');
     await rm(dir, { recursive: true, force: true });
   });
 });
